@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="foods">
+        <item>Fleisch</item>
+        <item>Vegetarisch</item>
+    </string-array>
+</resources>
