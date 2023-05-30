@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -27,6 +28,8 @@ import java.util.logging.Logger;
 public class MainActivity extends AppCompatActivity {
 
     private static final int SPEECH_REQUEST_CODE = 123;
+    private static final List<String> possiblePersonNames = new ArrayList<>(Arrays.asList("Tim", "Max", "Tina", "Fareed", "Moayad", "Dimitri"));
+    private static final List<String> possibleFood = new ArrayList<>(Arrays.asList("Fleisch", "Vegetarisch", "Vegan", "Lite"));
 
     private TableLayout entryTable;
 
@@ -77,22 +80,60 @@ public class MainActivity extends AppCompatActivity {
             // Extrahieren von Person, Datum und Gericht aus dem gesprochenen Text
             String[] entryParts = spokenText.split("\\s+");
             if (entryParts.length >= 2) {
-                String person = entryParts[0];
-                String food = entryParts[1];
+                // search for person name & food
+                boolean personFound = false;
+                boolean foodFound = false;
+                String person = "";
+                String food = "";
+                for (String word : entryParts) {
+                    if (!personFound) {
+                        // search for name of person
+                        for (String personName : possiblePersonNames) {
+                            if (word.equalsIgnoreCase(personName)) {
+                                // name was found
+                                person = personName;
+                                personFound = true;
+                                break;
+                            }
+                        }
+                    } else if (!foodFound) {
+                        // search for food
+                        for (String possibleFoodValue : possibleFood) {
+                            if (word.equalsIgnoreCase(possibleFoodValue)) {
+                                // food was found
+                                food = possibleFoodValue;
+                                foodFound = true;
+                                break;
+                            }
+                        }
+                    } else break;
+                }
+                // input validation
+                if ((!foodFound) && (!personFound)) {
+                    // NO person & NO food
+                    Toast.makeText(this, "Ungültiger Eintrag.", Toast.LENGTH_SHORT).show();
+                } else if (!personFound) {
+                    // NO person
+                    Toast.makeText(this, "Name der Person nicht erkannt", Toast.LENGTH_SHORT).show();
+                } else if (!foodFound) {
+                    // NO person
+                    Toast.makeText(this, "Gericht nicht erkannt", Toast.LENGTH_SHORT).show();
+                } else {
+                    // FOUND name of person & food
+                    try {
+                        // Hinzufügen des Eintrags zur Liste
+                        entries.put(person, food);
+                        System.out.println("Map updated");
 
-                try {
-                    // Hinzufügen des Eintrags zur Liste
-                    entries.put(person, food);
-                    System.out.println("Map updated");
+                        // Aktualisieren der Ansicht
+                        updateEntryTable();
 
-                    // Aktualisieren der Ansicht
-                    updateEntryTable();
-
-                    Toast.makeText(this, "Eintrag hinzugefügt: " + spokenText, Toast.LENGTH_SHORT).show();
-                } catch (Exception e) {
-                    Toast.makeText(this, "Ungültiges Eingabeformat", Toast.LENGTH_SHORT).show();
-                    System.out.println("Recognized entry parts: " + Arrays.toString(entryParts));
-                    System.out.println("Error: " + e.toString());
+                        Toast.makeText(this, "Eintrag hinzugefügt: " + spokenText, Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Ungültiges Eingabeformat", Toast.LENGTH_SHORT).show();
+                        System.out.println("Recognized entry parts: " + Arrays.toString(entryParts));
+                        System.out.println("Error: " + e.toString());
+                    }
                 }
             } else {
                 Toast.makeText(this, "Ungültiger Eintrag.", Toast.LENGTH_SHORT).show();
