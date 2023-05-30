@@ -5,9 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
 import android.view.View;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.Spinner;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -15,15 +13,11 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.logging.Logger;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -32,6 +26,7 @@ public class MainActivity extends AppCompatActivity {
     private static final List<String> possibleFood = new ArrayList<>(Arrays.asList("Fleisch", "Vegetarisch", "Vegan", "Lite"));
 
     private TableLayout entryTable;
+    private TextToSpeechUtil textToSpeech;
 
     // Later it has to be Map<String (Name der Person), Map<Date, String (Gericht)>) to store the selection for multiple dates
     private Map<String, String> entries;   // Map<String (Name der Person), String (Gericht)>
@@ -43,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
 
         entryTable = findViewById(R.id.entryTable);
         entries = new HashMap<>();
+        textToSpeech = new TextToSpeechUtil();
 
         Button addEntryButton = findViewById(R.id.addEntryButton);
         addEntryButton.setOnClickListener(new View.OnClickListener() {
@@ -65,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             startActivityForResult(intent, SPEECH_REQUEST_CODE);
         } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, "Spracherkennung wird auf diesem Gerät nicht unterstützt.", Toast.LENGTH_SHORT).show();
+            notification("Spracherkennung wird auf diesem Gerät nicht unterstützt.");
         }
     }
 
@@ -108,16 +104,33 @@ public class MainActivity extends AppCompatActivity {
                         }
                     } else break;
                 }
+
+                if (!personFound) {
+                    // the person was not found --> search again for food to give feedback about food
+                    for (String word : entryParts) {
+                        // search for food
+                        if (foodFound) break;
+                        for (String possibleFoodValue : possibleFood) {
+                            if (word.equalsIgnoreCase(possibleFoodValue)) {
+                                // food was found
+                                food = possibleFoodValue;
+                                foodFound = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 // input validation
                 if ((!foodFound) && (!personFound)) {
                     // NO person & NO food
-                    Toast.makeText(this, "Ungültiger Eintrag.", Toast.LENGTH_SHORT).show();
+                    notification("Name und Gericht konnten nicht erkannt werden");
                 } else if (!personFound) {
                     // NO person
-                    Toast.makeText(this, "Name der Person nicht erkannt", Toast.LENGTH_SHORT).show();
+                    notification("Der Name der Person konnte nicht erkannt werden");
                 } else if (!foodFound) {
                     // NO person
-                    Toast.makeText(this, "Gericht nicht erkannt", Toast.LENGTH_SHORT).show();
+                    notification("Das Gericht konnte nicht erkannt werden");
                 } else {
                     // FOUND name of person & food
                     try {
@@ -128,15 +141,15 @@ public class MainActivity extends AppCompatActivity {
                         // Aktualisieren der Ansicht
                         updateEntryTable();
 
-                        Toast.makeText(this, "Eintrag hinzugefügt: " + spokenText, Toast.LENGTH_SHORT).show();
+                        notification("Eintrag hinzugefügt: " + person + " " + food);
                     } catch (Exception e) {
-                        Toast.makeText(this, "Ungültiges Eingabeformat", Toast.LENGTH_SHORT).show();
+                        notification("Eingabe konnte nicht verstanden werden");
                         System.out.println("Recognized entry parts: " + Arrays.toString(entryParts));
                         System.out.println("Error: " + e.toString());
                     }
                 }
             } else {
-                Toast.makeText(this, "Ungültiger Eintrag.", Toast.LENGTH_SHORT).show();
+                notification("Eingabe konnte nicht verstanden werden");
             }
         }
     }
@@ -167,5 +180,10 @@ public class MainActivity extends AppCompatActivity {
         textView.setText(text);
         textView.setPadding(16, 8, 16, 8);
         return textView;
+    }
+
+    private void notification(String text) {
+        Toast.makeText(this, text, Toast.LENGTH_SHORT).show();
+        textToSpeech.speakText(this, text);
     }
 }
