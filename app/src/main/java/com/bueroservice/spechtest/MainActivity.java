@@ -1,4 +1,5 @@
 package com.bueroservice.spechtest;
+
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.os.Bundle;
@@ -16,24 +17,29 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.logging.Logger;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int SPEECH_REQUEST_CODE = 123;
 
-    private Spinner foodSpinner;
     private TableLayout entryTable;
 
-    private Map<String, Map<Date, String>> entries = new HashMap<>();
+    // Later it has to be Map<String (Name der Person), Map<Date, String (Gericht)>) to store the selection for multiple dates
+    private Map<String, String> entries;   // Map<String (Name der Person), String (Gericht)>
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        entryTable = findViewById(R.id.entryTable);
+        entries = new HashMap<>();
 
         Button addEntryButton = findViewById(R.id.addEntryButton);
         addEntryButton.setOnClickListener(new View.OnClickListener() {
@@ -70,26 +76,23 @@ public class MainActivity extends AppCompatActivity {
 
             // Extrahieren von Person, Datum und Gericht aus dem gesprochenen Text
             String[] entryParts = spokenText.split("\\s+");
-            if (entryParts.length >= 3) {
+            if (entryParts.length >= 2) {
                 String person = entryParts[0];
-                String dateString = entryParts[1];
-                String food = entryParts[2];
+                String food = entryParts[1];
 
-                SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
                 try {
-                    Date date = dateFormat.parse(dateString);
-
                     // Hinzufügen des Eintrags zur Liste
-                    Map<Date, String> personEntries = entries.getOrDefault(person, new HashMap<>());
-                    personEntries.put(date, food);
-                    entries.put(person, personEntries);
+                    entries.put(person, food);
+                    System.out.println("Map updated");
 
                     // Aktualisieren der Ansicht
                     updateEntryTable();
 
                     Toast.makeText(this, "Eintrag hinzugefügt: " + spokenText, Toast.LENGTH_SHORT).show();
                 } catch (Exception e) {
-                    Toast.makeText(this, "Ungültiges Datumsformat.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Ungültiges Eingabeformat", Toast.LENGTH_SHORT).show();
+                    System.out.println("Recognized entry parts: " + Arrays.toString(entryParts));
+                    System.out.println("Error: " + e.toString());
                 }
             } else {
                 Toast.makeText(this, "Ungültiger Eintrag.", Toast.LENGTH_SHORT).show();
@@ -102,28 +105,19 @@ public class MainActivity extends AppCompatActivity {
 
         TableRow headerRow = new TableRow(this);
         TextView personHeader = createTextView("Person");
-        TextView dateHeader = createTextView("Datum");
         TextView foodHeader = createTextView("Gericht");
         headerRow.addView(personHeader);
-        headerRow.addView(dateHeader);
         headerRow.addView(foodHeader);
         entryTable.addView(headerRow);
 
         for (String person : entries.keySet()) {
-            Map<Date, String> personEntries = entries.get(person);
-
-            for (Date date : personEntries.keySet()) {
-                String food = personEntries.get(date);
-
-                TableRow row = new TableRow(this);
-                TextView personTextView = createTextView(person);
-                TextView dateTextView = createTextView(formatDate(date));
-                TextView foodTextView = createTextView(food);
-                row.addView(personTextView);
-                row.addView(dateTextView);
-                row.addView(foodTextView);
-                entryTable.addView(row);
-            }
+            String food = entries.get(person);
+            TableRow row = new TableRow(this);
+            TextView personTextView = createTextView(person);   // TextView for name of person
+            TextView foodTextView = createTextView(food);       // TextView for food choice of person
+            row.addView(personTextView);
+            row.addView(foodTextView);
+            entryTable.addView(row);
         }
     }
 
@@ -132,10 +126,5 @@ public class MainActivity extends AppCompatActivity {
         textView.setText(text);
         textView.setPadding(16, 8, 16, 8);
         return textView;
-    }
-
-    private String formatDate(Date date) {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
-        return dateFormat.format(date);
     }
 }
