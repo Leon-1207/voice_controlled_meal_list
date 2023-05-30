@@ -35,14 +35,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        foodSpinner = findViewById(R.id.foodSpinner);
-        entryTable = findViewById(R.id.entryTable);
-
-        ArrayAdapter<CharSequence> foodAdapter = ArrayAdapter.createFromResource(this,
-                R.array.foods, android.R.layout.simple_spinner_item);
-        foodAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        foodSpinner.setAdapter(foodAdapter);
-
         Button addEntryButton = findViewById(R.id.addEntryButton);
         addEntryButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -56,6 +48,10 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Sprechen Sie Ihre gewünschte Person, das Datum und das Essen ein.");
+
+        // increase recording duration
+        intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, "5000");    // The amount of time that it should take after we stop hearing speech to consider the input complete.
+        intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, "5000"); //  The amount of time that it should take after we stop hearing speech to consider the input possibly complete.
 
         try {
             startActivityForResult(intent, SPEECH_REQUEST_CODE);
