@@ -22,7 +22,7 @@ import java.util.Map;
 public class MainActivity extends AppCompatActivity {
 
     private static final int SPEECH_REQUEST_CODE = 123;
-    private static final List<String> possiblePersonNames = new ArrayList<>(Arrays.asList("Tim", "Max", "Tina", "Fareed", "Moayad", "Dimitri"));
+    private static final List<String> possiblePersonNames = new ArrayList<>(Arrays.asList("Tim", "Max", "Tina", "Fareed", "Moayad", "Dimitri", "Leon"));
     private static final List<String> possibleFood = new ArrayList<>(Arrays.asList("Fleisch", "Vegetarisch", "Vegan", "Lite"));
 
     private TableLayout entryTable;
