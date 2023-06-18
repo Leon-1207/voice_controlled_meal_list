@@ -26,16 +26,18 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int SPEECH_REQUEST_CODE = 123;
     private static final List<String> possiblePersonNames = new ArrayList<>(
-            Arrays.asList("Tim", "Max", "Tina", "Fareed", "Moayad", "Dimitri", "Leon"));
+            Arrays.asList("Ulf", "Johanna", "Magret", "Carina", "Björn", "Nora"));
     private static final List<String> possibleFood = new ArrayList<>(
-            Arrays.asList("Fleisch", "Vegetarisch", "Vegan", "Lite"));
+            Arrays.asList("Vegetarisch", "Bürgerlich", "Topf", "Diät", "Moslem", "Fettreduziert"));
+    private static final List<String> possibleDays = new ArrayList<>(
+            Arrays.asList("Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"));
 
     private TableLayout entryTable;
     private TextToSpeechUtil textToSpeech;
 
     // Later it has to be Map<String (Name der Person), Map<Date, String (Gericht)>)
     // to store the selection for multiple dates
-    private Map<String, String> entries; // Map<String (Name der Person), String (Gericht)>
+    private Map<String, Map<String, String>> entries; // Map<String (Name der Person), Map<String (Wochentag), String (Gericht)>>
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,28 +77,27 @@ public class MainActivity extends AppCompatActivity {
 
         // increase recording duration
         intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, "5000"); // The amount of
-                                                                                                     // time that it
-                                                                                                     // should take
-                                                                                                     // after we stop
-                                                                                                     // hearing speech
-                                                                                                     // to consider the
-                                                                                                     // input complete.
+        // time that it
+        // should take
+        // after we stop
+        // hearing speech
+        // to consider the
+        // input complete.
         intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, "5000"); // The
-                                                                                                              // amount
-                                                                                                              // of time
-                                                                                                              // that it
-                                                                                                              // should
-                                                                                                              // take
-                                                                                                              // after
-                                                                                                              // we stop
-                                                                                                              // hearing
-                                                                                                              // speech
-                                                                                                              // to
-                                                                                                              // consider
-                                                                                                              // the
-                                                                                                              // input
-                                                                                                              // possibly
-                                                                                                              // complete.
+        // amount
+        // of time
+        // that it
+        // should
+        // take
+        // after
+        // we stop
+        // hearing
+        // speech
+        // to
+        // consider
+        // the
+        // input
+        // possibly complete.
 
         try {
             startActivityForResult(intent, SPEECH_REQUEST_CODE);
@@ -115,70 +116,43 @@ public class MainActivity extends AppCompatActivity {
 
             // Extrahieren von Person, Datum und Gericht aus dem gesprochenen Text
             String[] entryParts = spokenText.split("\\s+");
-            if (entryParts.length >= 2) {
-                // search for person name & food
-                boolean personFound = false;
-                boolean foodFound = false;
-                String person = "";
-                String food = "";
-                for (String word : entryParts) {
-                    if (!personFound) {
-                        // search for name of person
-                        for (String personName : possiblePersonNames) {
-                            if (word.equalsIgnoreCase(personName)) {
-                                // name was found
-                                person = personName;
-                                personFound = true;
-                                break;
-                            }
-                        }
-                    } else if (!foodFound) {
-                        // search for food
-                        for (String possibleFoodValue : possibleFood) {
-                            if (word.equalsIgnoreCase(possibleFoodValue)) {
-                                // food was found
-                                food = possibleFoodValue;
-                                foodFound = true;
-                                break;
-                            }
-                        }
-                    } else
-                        break;
-                }
+            if (entryParts.length >= 1) {
+                // search for person name, day & food
+                String person = searchForWord(entryParts, possiblePersonNames);
+                String food = searchForWord(entryParts, possibleFood);
+                String day = searchForWord(entryParts, possibleDays);
+                boolean foodFound = !food.isEmpty();
+                boolean personFound = !person.isEmpty();
+                boolean dayFound = !day.isEmpty();
 
-                if (!personFound) {
-                    // the person was not found --> search again for food to give feedback about
-                    // food
-                    for (String word : entryParts) {
-                        // search for food
-                        if (foodFound)
-                            break;
-                        for (String possibleFoodValue : possibleFood) {
-                            if (word.equalsIgnoreCase(possibleFoodValue)) {
-                                // food was found
-                                food = possibleFoodValue;
-                                foodFound = true;
-                                break;
-                            }
-                        }
-                    }
-                }
+                ArrayList<String> missingInformation = new ArrayList<>();
+                if (!personFound) missingInformation.add("Name der Person");
+                if (!dayFound) missingInformation.add("Wochentag");
+                if (!foodFound) missingInformation.add("Gericht");
 
                 // input validation
-                if ((!foodFound) && (!personFound)) {
-                    // NO person & NO food
-                    notification("Name und Gericht konnten nicht erkannt werden");
-                } else if (!personFound) {
-                    // NO person
-                    notification("Der Name der Person konnte nicht erkannt werden");
-                } else if (!foodFound) {
-                    // NO person
-                    notification("Das Gericht konnte nicht erkannt werden");
+                if (missingInformation.size() > 0) {
+                    String msg;
+                    switch (missingInformation.size()) {
+                        case 1:
+                            msg = String.format("%s konnte nicht erkannt werden", missingInformation.get(0));
+                            break;
+                        case 2:
+                            msg = String.format("%s und %s konnten nicht erkannt werden", missingInformation.get(0), missingInformation.get(1));
+                            break;
+                        default:
+                            msg = "Eingabe konnte nicht verstanden werden";
+                            break;
+                    }
+                    notification(msg);
                 } else {
-                    // FOUND name of person & food
+                    // FOUND EVERYTHING
                     try {
                         // Hinzufügen des Eintrags zur Liste
-                        entries.put(person, food);
+                        entries.computeIfAbsent(person, k -> new HashMap<String, String>());    // add new person if no map for person yet
+                        Map<String, String> mapForPerson = entries.get(person);
+                        assert mapForPerson != null;
+                        mapForPerson.put(day, food);
                         System.out.println("Map updated");
 
                         // Aktualisieren der Ansicht
@@ -192,28 +166,37 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             } else {
-                notification("Eingabe konnte nicht verstanden werden");
+                notification("Eingabe konnte nicht verstanden werden.");
             }
         }
     }
 
     private void updateEntryTable() {
-        entryTable.removeAllViews();
+        entryTable.removeAllViews();    // clear all views
 
         TableRow headerRow = new TableRow(this);
         TextView personHeader = createTextView("Person");
-        TextView foodHeader = createTextView("Gericht");
         headerRow.addView(personHeader);
-        headerRow.addView(foodHeader);
-        entryTable.addView(headerRow);
 
+        // add days of week to header row
+        for (String day : possibleDays) {
+            TextView dayTextView = createTextView(day);
+            headerRow.addView(dayTextView);
+        }
+        entryTable.addView(headerRow);  // add header row to table
+
+        // add rows with content
         for (String person : entries.keySet()) {
-            String food = entries.get(person);
+            // add row for current person
+            Map<String, String> mapForPerson = entries.get(person);
             TableRow row = new TableRow(this);
             TextView personTextView = createTextView(person); // TextView for name of person
-            TextView foodTextView = createTextView(food); // TextView for food choice of person
             row.addView(personTextView);
-            row.addView(foodTextView);
+            for (String day : possibleDays) {
+                String food = mapForPerson != null ? mapForPerson.get(day) : "";
+                TextView foodTextView = createTextView(food); // TextView for food choice of person
+                row.addView(foodTextView);
+            }
             entryTable.addView(row);
         }
     }
@@ -228,5 +211,18 @@ public class MainActivity extends AppCompatActivity {
     private void notification(String text) {
         Toast.makeText(this, text, Toast.LENGTH_SHORT).show();
         textToSpeech.speakText(this, text);
+    }
+
+    private String searchForWord(String[] recognizedWords, List<String> possibleOptions) {
+        for (String word : recognizedWords) {
+            // search for name of person
+            for (String option : possibleOptions) {
+                if (word.equalsIgnoreCase(option)) {
+                    // option was found
+                    return option;
+                }
+            }
+        }
+        return "";
     }
 }
