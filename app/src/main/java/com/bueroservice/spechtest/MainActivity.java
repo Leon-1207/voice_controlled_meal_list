@@ -2,6 +2,7 @@ package com.bueroservice.spechtest;
 
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
 import android.view.View;
@@ -31,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
             Arrays.asList("Vegetarisch", "Bürgerlich", "Topf", "Diät", "Moslem", "Fettreduziert"));
     private static final List<String> possibleDays = new ArrayList<>(
             Arrays.asList("Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"));
+    private static final List<String> possibleRemoveCommands = new ArrayList<>(Arrays.asList("entfernen", "löschen"));
 
     private TableLayout entryTable;
     private TextToSpeechUtil textToSpeech;
@@ -124,11 +126,12 @@ public class MainActivity extends AppCompatActivity {
                 boolean foodFound = !food.isEmpty();
                 boolean personFound = !person.isEmpty();
                 boolean dayFound = !day.isEmpty();
+                boolean removeCommandFound = !searchForWord(entryParts, possibleRemoveCommands).isEmpty();
 
                 ArrayList<String> missingInformation = new ArrayList<>();
                 if (!personFound) missingInformation.add("Name der Person");
                 if (!dayFound) missingInformation.add("Wochentag");
-                if (!foodFound) missingInformation.add("Gericht");
+                if ((!foodFound) && (!removeCommandFound)) missingInformation.add("Gericht");
 
                 // input validation
                 if (missingInformation.size() > 0) {
@@ -148,17 +151,35 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     // FOUND EVERYTHING
                     try {
-                        // Hinzufügen des Eintrags zur Liste
                         entries.computeIfAbsent(person, k -> new HashMap<String, String>());    // add new person if no map for person yet
                         Map<String, String> mapForPerson = entries.get(person);
                         assert mapForPerson != null;
-                        mapForPerson.put(day, food);
-                        System.out.println("Map updated");
+                        boolean wasUpdated = false;
+                        if (removeCommandFound) {
+                            // Eintrag aus Liste löschen
+                            if (mapForPerson.containsKey(day)) {
+                                food = mapForPerson.get(day);
+                                mapForPerson.remove(day);
+                                wasUpdated = true;
+                            } else
+                                notification("" + person + " hat bisher keinen Eintrag für " + day);
+                        } else {
+                            // Hinzufügen des Eintrags zur Liste
+                            mapForPerson.put(day, food);
+                            wasUpdated = true;
+                        }
+                        if (wasUpdated) {
+                            System.out.println("Map updated");
 
-                        // Aktualisieren der Ansicht
-                        updateEntryTable();
+                            // Aktualisieren der Ansicht
+                            updateEntryTable();
 
-                        notification("Eintrag hinzugefügt: " + person + " " + food);
+                            String text;
+                            if (removeCommandFound) text = "Eintragt entfernt: ";
+                            else text = "Eintrag hinzugefügt: ";
+                            text = text + person + " " + day + " " + food;
+                            notification(text);
+                        }
                     } catch (Exception e) {
                         notification("Eingabe konnte nicht verstanden werden");
                         System.out.println("Recognized entry parts: " + Arrays.toString(entryParts));
@@ -176,11 +197,15 @@ public class MainActivity extends AppCompatActivity {
 
         TableRow headerRow = new TableRow(this);
         TextView personHeader = createTextView("Person");
+        personHeader.setTypeface(null, Typeface.BOLD);
+        ;
         headerRow.addView(personHeader);
 
         // add days of week to header row
         for (String day : possibleDays) {
             TextView dayTextView = createTextView(day);
+            dayTextView.setTypeface(null, Typeface.BOLD);
+            ;
             headerRow.addView(dayTextView);
         }
         entryTable.addView(headerRow);  // add header row to table
